@@ -1,10 +1,10 @@
 class KubernetesTools < Formula
   desc "Set of scripts that simplify daily Kubernetes operations"
   homepage "https://github.com/haooliveira84/kubernetes-tools"
-  url "https://github.com/haooliveira84/kubernetes-tools/archive/refs/tags/v2.3.1.tar.gz"
-  sha256 "48e708b436183fe65e6dd25bea162749c704352e90832caaa291a37bd5e9f6bc"
+  url "https://github.com/haooliveira84/kubernetes-tools/archive/refs/tags/v2.3.2.tar.gz"
+  sha256 "d3238633be9fb0740d45a42ab19f10bfb96a3d4f5a9189fb3490def08d4d7681"
   license "MIT"
-  version "2.3.1"
+  version "2.3.2"
 
   depends_on "kubernetes-cli"
   depends_on "jq"
