@@ -2,29 +2,56 @@ class KubernetesTools < Formula
   desc "Set of scripts that simplify daily Kubernetes operations"
   homepage "https://github.com/haooliveira84/kubernetes-tools"
   url "https://github.com/haooliveira84/kubernetes-tools/archive/refs/tags/v2.3.4.tar.gz"
+  version "2.3.4"
   sha256 "4d690d2ae143dda52a2f93b035875fd7afab44bfdf1d6cefcbfa77e28dea1c09"
   license "MIT"
-  version "2.3.4"
 
-  depends_on "kubernetes-cli"
   depends_on "jq"
+  depends_on "kubernetes-cli"
+
+  KTOOLS_COMPLETED_COMMANDS = %w[
+    klogs kexec kcopy kpod kdebug kevents
+    kns kctx knode krestart kscale kpf ksecret
+  ].freeze
 
   def install
     bin.install Dir["bin/*"]
-    pkgshare.install "completion"
+
+    # Symlink per command so bash-completion v2's lazy loader (lookup by
+    # command name) finds the file when the user hits <TAB> on klogs, kctx, ...
+    bash_completion.install "completion/__completion" => "ktools"
+    KTOOLS_COMPLETED_COMMANDS.each do |cmd|
+      bash_completion.install_symlink "ktools" => cmd
+    end
+
+    # Same lazy-loading dance for fish: install under a primary name and
+    # symlink each command so vendor_completions.d picks it up by filename.
+    fish_completion.install "completion/kubernetes-tools.fish" => "ktools.fish"
+    KTOOLS_COMPLETED_COMMANDS.each do |cmd|
+      fish_completion.install_symlink "ktools.fish" => "#{cmd}.fish"
+    end
+
+    # Point the zsh wrapper at the installed bash completion file so
+    # bashcompinit can source it without depending on $PATH lookups.
+    inreplace "completion/_ktools",
+              "@BASH_COMPLETION_FILE@",
+              "#{bash_completion}/ktools"
+    zsh_completion.install "completion/_ktools"
   end
 
   def caveats
     <<~EOS
-      Enable tab completion:
-        ktools --init
+      Shell completion is installed automatically. If completions don't show
+      up, make sure your shell loads Homebrew's completion paths:
 
-      Or source completions manually:
-        bash:  source #{opt_pkgshare}/completion/__completion
-        zsh:   autoload -U compaudit compinit bashcompinit && compaudit && compinit && bashcompinit
-               source #{opt_pkgshare}/completion/__completion
-        fish:  cp #{opt_pkgshare}/completion/kubernetes-tools.fish \\
-                  ~/.config/fish/completions/
+        bash:  add to ~/.bashrc (requires bash-completion)
+                 [[ -r "#{HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]] && \\
+                   . "#{HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+
+        zsh:   ensure FPATH includes #{HOMEBREW_PREFIX}/share/zsh/site-functions
+               (added by `brew shellenv`), then restart your shell.
+
+        fish:  works out of the box via vendor_completions.d.
 
       Optional (recommended):
         brew install fzf        # nicer interactive pickers
@@ -36,5 +63,15 @@ class KubernetesTools < Formula
     assert_match "Kubernetes Tools", shell_output("#{bin}/ktools -h")
     assert_match "kctx",  shell_output("#{bin}/ktools -h")
     assert_match "klogs", shell_output("#{bin}/ktools -h")
+
+    assert_path_exists bash_completion/"ktools"
+    KTOOLS_COMPLETED_COMMANDS.each do |cmd|
+      assert_path_exists bash_completion/cmd
+    end
+    assert_path_exists zsh_completion/"_ktools"
+    assert_path_exists fish_completion/"ktools.fish"
+    KTOOLS_COMPLETED_COMMANDS.each do |cmd|
+      assert_path_exists fish_completion/"#{cmd}.fish"
+    end
   end
 end
